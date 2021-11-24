@@ -1,4 +1,4 @@
-package gbc_framework.constants;
+package gbc_framework;
 
 
 public final class RomConstants 

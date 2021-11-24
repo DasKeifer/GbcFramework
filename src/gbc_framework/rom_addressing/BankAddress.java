@@ -1,6 +1,6 @@
 package gbc_framework.rom_addressing;
 
-import gbc_framework.constants.RomConstants;
+import gbc_framework.RomConstants;
 import gbc_framework.utils.RomUtils;
 
 

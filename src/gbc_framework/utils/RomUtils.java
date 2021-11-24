@@ -1,6 +1,6 @@
 package gbc_framework.utils;
 
-import gbc_framework.constants.RomConstants;
+import gbc_framework.RomConstants;
 import gbc_framework.rom_addressing.BankAddress;
 
 public final class RomUtils 
