@@ -9,8 +9,8 @@ public interface ByteBlock
 {
 	public String getId();
 	public int getWorstCaseSize(AssignedAddresses assignedAddresses);
-	public void addAllIds(Set<String> usedIds);
+	public boolean addAllIds(Set<String> usedIds);
 	public void assignBank(byte bank, AssignedAddresses assignedAddresses);
-	public void assignAddresses(BankAddress fixedAddress, AssignedAddresses assignedAddresses);
+	public BankAddress assignAddresses(BankAddress fixedAddress, AssignedAddresses assignedAddresses);
 	public void removeAddresses(AssignedAddresses assignedAddresses);
 }

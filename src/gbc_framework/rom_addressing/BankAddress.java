@@ -142,6 +142,22 @@ public class BankAddress
 		return addressInBank;
 	}
 	
+	public AddressRange getDifferenceAsRange(BankAddress other)
+	{
+		int globalAddress = RomUtils.convertToGlobalAddress(bank, addressInBank);
+		int otherGlobalAddress = RomUtils.convertToGlobalAddress(other.bank, other.addressInBank);
+		if (globalAddress > otherGlobalAddress)
+		{
+			return new AddressRange(otherGlobalAddress, globalAddress);
+		}
+		else if (globalAddress < otherGlobalAddress)
+		{
+			return new AddressRange(globalAddress, otherGlobalAddress);
+		}
+
+		return new AddressRange(globalAddress, globalAddress + 1);
+	}
+	
     @Override
     public boolean equals(Object o) 
     {
