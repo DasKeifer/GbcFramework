@@ -1,5 +1,7 @@
 package gbc_framework.utils;
 
+import java.util.zip.CRC32;
+
 public final class ByteUtils 
 {	
 	private ByteUtils() {}
@@ -22,6 +24,32 @@ public final class ByteUtils
 		}
 	}
 
+	public static byte readUpperHexChar(byte value)
+	{
+		return (byte) ((value & BYTE_UPPER_HEX_CHAR_MASK) >> 4);
+	}
+
+	public static byte readLowerHexChar(byte value)
+	{
+		return (byte) (value & BYTE_LOWER_HEX_CHAR_MASK);
+	}
+
+	public static byte packHexCharsToByte(byte upper, byte lower)
+	{
+		if (upper > MAX_HEX_CHAR_VALUE || upper < MIN_HEX_CHAR_VALUE)
+		{
+			throw new IllegalArgumentException("Upper bit (" + upper + 
+					" must be a hex char value unshifted (i.e. between " +
+					MIN_HEX_CHAR_VALUE + " and " +  MAX_HEX_CHAR_VALUE + ")");
+		}
+		if (lower > MAX_HEX_CHAR_VALUE || lower < MIN_HEX_CHAR_VALUE)
+		{
+			throw new IllegalArgumentException("Lower bit (" + lower + 
+					" must be a hex char value");
+		}
+		return (byte) (upper << 4 & 0xff | lower);
+	}
+	
 	// Sorts so the negatives are treated as positive - i.e. -128 is treated as 255
 	public static int unsignedCompareBytes(byte b1, byte b2)
 	{
@@ -54,41 +82,131 @@ public final class ByteUtils
 		return 0;
 	}
 
-	public static byte readUpperHexChar(byte value)
+	public static boolean compareBytes(byte[] compareAgainst, int compareAgainstIdx, byte[] compareTo)
 	{
-		return (byte) ((value & BYTE_UPPER_HEX_CHAR_MASK) >> 4);
-	}
-
-	public static byte readLowerHexChar(byte value)
-	{
-		return (byte) (value & BYTE_LOWER_HEX_CHAR_MASK);
-	}
-
-	public static byte packHexCharsToByte(byte upper, byte lower)
-	{
-		if (upper > MAX_HEX_CHAR_VALUE || upper < MIN_HEX_CHAR_VALUE)
+		for (int i = 0; i < compareTo.length; i ++)
 		{
-			throw new IllegalArgumentException("Upper bit (" + upper + 
-					" must be a hex char value unshifted (i.e. between " +
-					MIN_HEX_CHAR_VALUE + " and " +  MAX_HEX_CHAR_VALUE + ")");
+			if (compareAgainst[compareAgainstIdx + i] != compareTo[i])
+			{
+				return false;
+			}
 		}
-		if (lower > MAX_HEX_CHAR_VALUE || lower < MIN_HEX_CHAR_VALUE)
+		return true;
+	}
+
+	public static byte[] toLittleEndianBytes(int value, int numBytes)
+	{
+		byte[] asBytes = new byte[numBytes];
+		writeLittleEndian(value, asBytes, 0, numBytes);
+		return asBytes;
+	}
+
+	public static byte[] toLittleEndianBytes(long value, int numBytes)
+	{
+		byte[] asBytes = new byte[numBytes];
+		writeLittleEndian(value, asBytes, 0, numBytes);
+		return asBytes;
+	}
+
+	public static byte[] shortToLittleEndianBytes(short value)
+	{
+		return toLittleEndianBytes(value, 2);
+	}
+
+	public static byte[] sevenBitEncode(long value)
+	{
+		long valueCopy = value;
+		
+		// Determine how big of a byte array we need
+		int byteSize = 1;
+		valueCopy >>= 7;
+        while (valueCopy != 0)
+        {
+        	byteSize++;
+        	valueCopy--;
+            valueCopy >>= 7;
+        }
+		
+        // Create the array
+		byte[] bytes = new byte[byteSize];
+		
+		// Get the last half byte (7 bits) of the value then shift
+		// them off the value
+		int index = 0;
+        byte lastHalfByte = (byte) (value & 0x7f);
+        value >>= 7;
+        
+        // While we still have bits left (and there is more than one
+        // since the last set will be hanled special
+        while (value != 0)
+        {
+        	// Write the half byte as a full byte
+        	bytes[index++] = lastHalfByte;
+        	
+        	// subtract one from the value because they
+        	// try to save as much space as possible and
+        	// because we know its at least 1 since its
+        	// not the terminal byte
+        	value--;
+        	
+        	// Get the next half byte
+            lastHalfByte = (byte) (value & 0x7f);
+            value >>= 7;
+        }
+        
+        // Write the terminal half byte by adding the signal that
+        // it is the final half byte
+    	bytes[index] = (byte)(0x80 | lastHalfByte);
+        return bytes;
+	}
+	
+	public static byte[] sevenBitEncodeSigned(long value)
+	{
+		// If its negative, make it positive
+		boolean negative = value < 0;
+		if (negative)
 		{
-			throw new IllegalArgumentException("Lower bit (" + lower + 
-					" must be a hex char value");
+			value = Math.abs(value);
 		}
-		return (byte) (upper << 4 & 0xff | lower);
+		
+		// Now shift it up one to make room for the sign bit and
+		// set it if its negative
+		value = value << 1;
+		if (negative)
+		{
+			value++;
+		}
+		
+		// Now write it like a normal value
+	    return sevenBitEncode(value);
 	}
-
-	public static short readAsShort(byte[] byteArray, int index) 
-	{	
-		//little endian
-		return  (short) readLittleEndian(byteArray, index, 2);
+	
+	public static void setBytes(byte[] bytes, int startIndex, int numberToSet, byte valueToSet)
+	{
+		for (int i = 0; i < numberToSet; i ++)
+		{
+			bytes[startIndex + i] = valueToSet;
+		}
 	}
-
-	public static void writeAsShort(short value, byte[] byteArray, int index) 
-	{	
-		writeLittleEndian(value, byteArray, index, 2);
+	
+	public static void copyBytes(byte[] destination, int destinationStartIndex, byte[] toCopy)
+	{
+		copyBytes(destination, destinationStartIndex, toCopy, 0, toCopy.length);
+	}
+	
+	public static void copyBytes(byte[] destination, int destinationStartIndex, byte[] toCopy, int toCopyStartIndex, int length)
+	{
+		if (destinationStartIndex + length > destination.length)
+		{
+			throw new IllegalArgumentException("The destination array (size " + destination.length + 
+					") is not large enough to copy the source array (size " + length + 
+					") to it starting at index " + destinationStartIndex);
+		}
+		
+		for (int i = 0; i < length; i++)
+		{
+			destination[destinationStartIndex + i] = toCopy[toCopyStartIndex + i];
+		}
 	}
 
 	public static long readLittleEndian(byte[] byteArray, int index, int numBytes) 
@@ -112,7 +230,13 @@ public final class ByteUtils
 		}
 		return number;
 	}
-	
+
+	public static short readAsShort(byte[] byteArray, int index) 
+	{	
+		//little endian
+		return  (short) readLittleEndian(byteArray, index, 2);
+	}
+
 	public static void writeLittleEndian(int value, byte[] byteArray, int index, int numBytes) 
 	{
 		if (numBytes > 4)
@@ -145,39 +269,9 @@ public final class ByteUtils
 		}
 	}
 
-	public static void copyBytes(byte[] destination, int destinationStartIndex, byte[] source)
-	{
-		if (destinationStartIndex + source.length > destination.length)
-		{
-			throw new IllegalArgumentException("The destination array (size " + destination.length + 
-					") is not large enough to copy the source array (size " + source.length + 
-					") to it starting at index " + destinationStartIndex);
-		}
-		
-		for (int i = 0; i < source.length; i++)
-		{
-			destination[destinationStartIndex + i] = source[i];
-		}
-	}
-	
-	public static void setBytes(byte[] bytes, int startIndex, int numberToSet, byte valueToSet)
-	{
-		for (int i = 0; i < numberToSet; i ++)
-		{
-			bytes[startIndex + i] = valueToSet;
-		}
-	}
-	
-	public static boolean compareBytes(byte[] compareAgainst, int compareAgainstIdx, byte[] compareTo)
-	{
-		for (int i = 0; i < compareTo.length; i ++)
-		{
-			if (compareAgainst[compareAgainstIdx + i] != compareTo[i])
-			{
-				return false;
-			}
-		}
-		return true;
+	public static void writeAsShort(short value, byte[] byteArray, int index) 
+	{	
+		writeLittleEndian(value, byteArray, index, 2);
 	}
 
 	public static byte parseByte(String str) 
@@ -205,4 +299,10 @@ public final class ByteUtils
 		return val;
 	}
 
+	public static long computeCrc32(byte[] data)
+	{
+		CRC32 crc = new CRC32();
+        crc.update(data);
+        return crc.getValue();
+	}
 }

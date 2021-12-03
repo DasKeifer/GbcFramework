@@ -57,6 +57,16 @@ public class BankAddress
 		return new BankAddress(bank, (short) (addressInBank + offset));
 	}
 	
+	public boolean offset(int offset)
+	{
+		if (!isAddressInBankRange(addressInBank + offset))
+		{
+			return false;
+		}
+		addressInBank += offset;
+		return true;
+	}
+	
 	/// Make the passed address relative to this objects addressInBank
 	public BankAddress newRelativeToAddressInBank(int addressToMakeRelativeToAddressInBank)
 	{
@@ -156,6 +166,13 @@ public class BankAddress
 		}
 
 		return new AddressRange(globalAddress, globalAddress + 1);
+	}
+	
+	public int getDifference(BankAddress other)
+	{
+		
+		return (other.bank - bank) * RomConstants.BANK_SIZE +
+				other.addressInBank - addressInBank;
 	}
 	
     @Override
