@@ -1,5 +1,6 @@
 package gbc_framework.utils;
 
+import java.util.List;
 import java.util.zip.CRC32;
 
 public final class ByteUtils 
@@ -112,7 +113,17 @@ public final class ByteUtils
 	{
 		return toLittleEndianBytes(value, 2);
 	}
-
+	
+	public static byte[] shortListToLittleEndianBytes(List<Short> values)
+	{
+		byte[] bytes = new byte[values.size() * 2];
+		for (int i = 0; i < values.size(); i++)
+		{
+			writeAsShort(values.get(i), bytes, i * 2);
+		}
+		return bytes;
+	}
+	
 	public static byte[] sevenBitEncode(long value)
 	{
 		long valueCopy = value;
