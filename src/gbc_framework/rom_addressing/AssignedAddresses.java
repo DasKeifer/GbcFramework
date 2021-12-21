@@ -1,21 +1,21 @@
 package gbc_framework.rom_addressing;
 
-import java.util.HashMap;
+import java.util.TreeMap;
 import java.util.HashSet;
 import java.util.Set;
 
 public class AssignedAddresses 
 {
-	private HashMap<String, BankAddress> addresses;
+	private TreeMap<String, BankAddress> addresses;
 
 	public AssignedAddresses()
 	{
-		addresses = new HashMap<>();
+		addresses = new TreeMap<>();
 	}
 	
 	public AssignedAddresses(AssignedAddresses assignedAddresses) 
 	{
-		addresses = new HashMap<>(assignedAddresses.addresses);
+		addresses = new TreeMap<>(assignedAddresses.addresses);
 	}
 	
 	public void remove(String key)

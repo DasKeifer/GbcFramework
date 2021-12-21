@@ -8,8 +8,9 @@ public class BankAddress
 {
 	public static final byte UNASSIGNED_BANK = -1;
 	public static final short UNASSIGNED_ADDRESS = -1;
-	
+
 	public static final BankAddress UNASSIGNED = new BankAddress(UNASSIGNED_BANK, UNASSIGNED_ADDRESS);
+	public static final BankAddress ZERO = new BankAddress((byte) 0, (short) 0);
 	
 	private byte bank;
 	private short addressInBank;
@@ -47,8 +48,17 @@ public class BankAddress
 	{
 		return new BankAddress(bank, (short) 0);
 	}
+
+	public BankAddress newAtStartOfNextBank() 
+	{
+		if (isBankRange((byte) (bank + 1)))
+		{
+			return new BankAddress((byte) (bank + 1), (short) 0);
+		}
+		return null;
+	}
 	
-	public BankAddress newOffsetted(int offset)
+	public BankAddress newOffsettedWithinBank(int offset)
 	{
 		if (!isAddressInBankRange(addressInBank + offset))
 		{
@@ -57,7 +67,102 @@ public class BankAddress
 		return new BankAddress(bank, (short) (addressInBank + offset));
 	}
 	
-	public boolean offset(int offset)
+	public enum LimitType
+	{
+		IN_VALID_RANGES,
+		WITHIN_BANK,
+		WITHIN_BANK_OR_START_OF_NEXT
+	}
+	
+	public enum ToUseType
+	{
+		BANK_AND_BANK_IN_ADDRESS,
+		BANK_ONLY,
+		ADDRESS_IN_BANK_ONLY
+	}
+	
+	public BankAddress newSum(BankAddress toAdd)
+	{
+		return newSum(toAdd, ToUseType.BANK_AND_BANK_IN_ADDRESS, LimitType.IN_VALID_RANGES);
+	}
+	
+	public BankAddress newSum(BankAddress toAdd, ToUseType whatToAdd)
+	{
+		return newSum(toAdd, whatToAdd, LimitType.IN_VALID_RANGES);
+	}
+
+	// TODO: Add isFullAddress check to many of these?
+	public BankAddress newSum(BankAddress toAdd, ToUseType whatToAdd, LimitType limit)
+	{
+		boolean valid = true;
+		int bankSum = bank;
+		int addressSum = addressInBank;
+		switch(whatToAdd)
+		{
+		case BANK_ONLY:
+			bankSum += toAdd.bank;
+			break;
+		case ADDRESS_IN_BANK_ONLY:
+			addressSum += toAdd.addressInBank;
+			break;
+		case BANK_AND_BANK_IN_ADDRESS:
+		default:
+			bankSum += toAdd.bank;
+			addressSum += toAdd.addressInBank;
+			break;
+		}
+		
+		// Check the address
+		if (!isAddressInBankRange(addressSum))
+		{
+			// Switch behavior based on our limit
+			switch (limit)
+			{
+			case IN_VALID_RANGES:
+				bankSum++;
+				addressSum -= RomConstants.BANK_SIZE;
+				break;
+			case WITHIN_BANK_OR_START_OF_NEXT:
+				if (!isAddressInBankRange(addressSum - 1))
+				{
+					valid = false;
+				}
+				break;
+			case WITHIN_BANK:
+			default:
+				valid = false;
+				break;
+			}
+		}
+		
+		// Now check bank if address is valid
+		if (valid)
+		{
+			switch (limit)
+			{
+			case IN_VALID_RANGES:
+				valid = isBankRange(bankSum);
+				break;
+			case WITHIN_BANK_OR_START_OF_NEXT:
+				valid = bankSum == bank ||
+					(bankSum - 1 == bank && addressSum == 0);
+				break;
+			case WITHIN_BANK:
+			default:
+				valid = bankSum == bank;
+				break;
+			}
+		}
+		
+		return valid ? new BankAddress((byte) bankSum, (short) addressSum) : null;
+	}
+	
+	public BankAddress newAbsoluteDifferenceBetween(BankAddress toGetRelativeOf)
+	{
+		return new BankAddress(Math.abs(getDifference(toGetRelativeOf)));
+	}
+	
+	public boolean offsetWithinBank(int offset)
 	{
 		if (!isAddressInBankRange(addressInBank + offset))
 		{
@@ -65,16 +170,6 @@ public class BankAddress
 		}
 		addressInBank += offset;
 		return true;
-	}
-	
-	/// Make the passed address relative to this objects addressInBank
-	public BankAddress newRelativeToAddressInBank(int addressToMakeRelativeToAddressInBank)
-	{
-		if (!isAddressInBankRange(addressToMakeRelativeToAddressInBank - addressInBank))
-		{
-			return null;
-		}
-		return new BankAddress(bank, (short) (addressToMakeRelativeToAddressInBank - addressInBank));
 	}
 
 	public void setToCopyOf(BankAddress toCopy) 
@@ -105,7 +200,7 @@ public class BankAddress
 		this.addressInBank = addressInBank;
 	}
 	
-	private boolean isBankRange(byte toCheck)
+	private boolean isBankRange(int toCheck)
 	{
 		return (toCheck >= 0 && toCheck < RomConstants.NUMBER_OF_BANKS) ||
 				toCheck == UNASSIGNED_BANK;
@@ -122,12 +217,22 @@ public class BankAddress
 		return bank != UNASSIGNED_BANK && addressInBank != UNASSIGNED_ADDRESS;
 	}
 
+	public boolean isBankUnassigned() 
+	{
+		return bank == UNASSIGNED_BANK;
+	}
+
+	public boolean isAddressInBankUnassigned() 
+	{
+		return addressInBank == UNASSIGNED_ADDRESS;
+	}
+
 	public boolean isSameBank(BankAddress toCheck) 
 	{
 		return bank == toCheck.bank;
 	}
 
-	public boolean fitsInBankAddress(int size) 
+	public boolean fitsInBankAddressWithOffset(int offset) 
 	{
 		// Can't check if this address isn't assigned yet
 		if (addressInBank == UNASSIGNED_ADDRESS)
@@ -139,7 +244,7 @@ public class BankAddress
 		// i.e. if the address is the last address in the bank, it can still fit
 		// one byte at that address. If its the first address in the bank, then
 		// it can fit the whole bank size
-		return isAddressInBankRange(addressInBank + size - 1);
+		return isAddressInBankRange(addressInBank + offset - 1);
 	}
 
 	public byte getBank()
@@ -150,6 +255,12 @@ public class BankAddress
 	public short getAddressInBank()
 	{
 		return addressInBank;
+	}
+	
+	public int getDifference(BankAddress other)
+	{
+		return (other.bank - bank) * RomConstants.BANK_SIZE +
+				other.addressInBank - addressInBank;
 	}
 	
 	public AddressRange getDifferenceAsRange(BankAddress other)
@@ -166,13 +277,6 @@ public class BankAddress
 		}
 
 		return new AddressRange(globalAddress, globalAddress + 1);
-	}
-	
-	public int getDifference(BankAddress other)
-	{
-		
-		return (other.bank - bank) * RomConstants.BANK_SIZE +
-				other.addressInBank - addressInBank;
 	}
 	
     @Override

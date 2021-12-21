@@ -1,5 +1,10 @@
 package gbc_framework.rom_addressing;
 
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+
+import gbc_framework.utils.RomUtils;
 
 public class AddressRange 
 {
@@ -14,6 +19,16 @@ public class AddressRange
 		}
 		this.start = start;
 		this.stopExclusive = stopExclusive;
+	}
+	
+	public AddressRange(BankAddress start, int size)
+	{
+		if (size <= 0)
+		{
+			throw new IllegalArgumentException("AddressRange: The size passed (" + size + ") is not a positive number");
+		}
+		this.start = RomUtils.convertToGlobalAddress(start);
+		this.stopExclusive = this.start + size;
 	}
 	
 	public AddressRange(AddressRange toCopy)
@@ -133,5 +148,41 @@ public class AddressRange
 	public int getStopExclusive()
 	{
 		return stopExclusive;
+	}
+	
+	public static void sortAndCombine(List<AddressRange> ranges)
+	{
+		// If there are none or only one, nothing to do
+		if (ranges.size() > 1)
+		{
+			// Sort it by address range start
+			List<AddressRange> sorted = new LinkedList<>(ranges);
+			Collections.sort(sorted, (ar1, ar2) ->
+					ar1.start - ar2.start);
+			
+			// Now go through and combine them		
+			ranges.clear();
+			int start = sorted.get(0).getStart();
+			int stop = sorted.get(0).getStopExclusive();
+			for (AddressRange ar : sorted)
+			{
+				if (ar.start <= stop)
+				{
+					if (ar.stopExclusive > stop)
+					{
+						stop = ar.stopExclusive;
+					}
+				}
+				else
+				{
+					ranges.add(new AddressRange(start, stop));
+					start = ar.start;
+					stop = ar.stopExclusive;
+				}
+			}
+			
+			// Add the last one that was being worked on
+			ranges.add(new AddressRange(start, stop));
+		}
 	}
 }
