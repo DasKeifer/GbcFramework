@@ -308,6 +308,6 @@ public class BankAddress
 	@Override
 	public String toString()
 	{
-		return String.format("0x%x:%4x", bank, addressInBank);
+		return String.format("0x%x:%4x(%d)", bank, addressInBank + 0x4000, RomUtils.convertToGlobalAddress(bank, addressInBank));
 	}
 }

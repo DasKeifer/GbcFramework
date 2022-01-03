@@ -24,6 +24,16 @@ public final class ByteUtils
 					readLittleEndian(bytes, index + i * bytesPerNumber, bytesPerNumber)));
 		}
 	}
+	
+	public static short unsignedByteAsShort(byte value)
+	{
+		short asShort = value;
+		if (value < 0)
+		{
+			asShort += 1 << 8;
+		}
+		return asShort;
+	}
 
 	public static byte readUpperHexChar(byte value)
 	{
