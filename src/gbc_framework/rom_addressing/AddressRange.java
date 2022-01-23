@@ -13,9 +13,9 @@ public class AddressRange
 	
 	public AddressRange(int start, int stopExclusive)
 	{
-		if (start >= stopExclusive)
+		if (start > stopExclusive)
 		{
-			throw new IllegalArgumentException("AddressRange: The exclusive stop passed (" + stopExclusive + ") was equal to or before the start (" + start + ")");
+			throw new IllegalArgumentException("AddressRange: The exclusive stop passed (" + stopExclusive + ") was before the start (" + start + ")");
 		}
 		this.start = start;
 		this.stopExclusive = stopExclusive;
@@ -23,7 +23,7 @@ public class AddressRange
 	
 	public AddressRange(BankAddress start, int size)
 	{
-		if (size <= 0)
+		if (size < 0)
 		{
 			throw new IllegalArgumentException("AddressRange: The size passed (" + size + ") is not a positive number");
 		}
