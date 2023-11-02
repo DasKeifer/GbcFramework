@@ -29,9 +29,10 @@ public final class SegmentNamingUtils
 	{
 		return PLACEHOLDER_MARKER + placeholderId + PLACEHOLDER_MARKER;
 	}
-
+	
 	public static String replacePlaceholders(String line, Map<String, String> placeholderToArgs)
 	{
+		// TODO: refactor to find placeholder in line and search map for that
 		for (Entry<String, String> entry : placeholderToArgs.entrySet())
 		{
 			if (!entry.getKey().startsWith(PLACEHOLDER_MARKER) || !entry.getKey().endsWith(PLACEHOLDER_MARKER))
